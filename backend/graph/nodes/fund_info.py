@@ -7,13 +7,39 @@ from dotenv import load_dotenv
 load_dotenv()
 
 
-def fetch_nav(fund_name: str) -> dict:
-    print("fetch_nav")
-    results = requests.get(
-        f"https://api.mfapi.in/mf/search?q={fund_name}"
-    ).json()
+llm = ChatOpenAI(model="gpt-4o", temperature=0.2)
+
+def fetch_nav(fund_name: str, retries: int = 0) -> dict:
+    print(f"fetch_nav for {fund_name}")
+    try:
+        results = requests.get(
+            f"https://api.mfapi.in/mf/search?q={fund_name}"
+        ).json()
+    except Exception as e:
+        return {"error": str(e)}
+
     if not results:
-        return {"error": f"Fund not found: {fund_name}"}
+        if retries >= 2:
+            return {"error": f"Fund not found after 3 attempts: {fund_name}"}
+        
+        print(f"Fund '{fund_name}' not found. Using AI to retry with explicit official name...")
+        prompt = (
+            f"The search for Indian mutual fund '{fund_name}' failed to match the API registry. "
+            "Please provide the exact official/legal name of this fund (e.g. replacing 'IDFC' with 'Bandhan', or adding 'Direct Plan Growth'). "
+            "Return ONLY the exact fund name without quotes, markdown, or extra text."
+        )
+        corrected_name = llm.invoke(prompt).content.strip()
+        
+        # Guard against loop
+        if corrected_name.lower() == fund_name.lower():
+            words = fund_name.split()
+            if len(words) > 2:
+                corrected_name = " ".join(words[:2])
+            else:
+                return {"error": f"Fund not found after AI fallback: {fund_name}"}
+
+        return fetch_nav(corrected_name, retries + 1)
+
     code = results[0]["schemeCode"]
     data = requests.get(f"https://api.mfapi.in/mf/{code}").json()
     df = pd.DataFrame(data["data"])
@@ -28,13 +54,15 @@ def fetch_nav(fund_name: str) -> dict:
     }
 
 
-llm = ChatOpenAI(model="gpt-4o", temperature=0.2)
-
-
 def fund_info_node(state: AgentState) -> dict:
     fund = state["fund_names"][0]
     data = fetch_nav(fund)
     print(data)
+    
+    if "error" in data:
+        msg = data["error"]
+        return {"tool_result": msg, "tool_results": {"fund_info": msg}}
+        
     gain_1y = round(
         ((data["latest_nav"] - data["nav_1y_ago"]) / data["nav_1y_ago"]) * 100, 2
     )
