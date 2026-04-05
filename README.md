@@ -76,8 +76,6 @@ graph TD
 **Frontend:**
 
 - **Framework:** Next.js (React)
-- **Styling:** Custom Premium Vanilla CSS (Minimalist styling, dark-mode aesthetic)
-- **PDF Generation:** html2pdf.js
 
 ---
 
