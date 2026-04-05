@@ -20,7 +20,8 @@ export default function Home() {
 
     try {
       // Connect to the FastAPI backend
-      const res = await fetch("http://localhost:8000/chat", {
+      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL;
+      const res = await fetch(`${backendUrl}/chat`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ message: query }),

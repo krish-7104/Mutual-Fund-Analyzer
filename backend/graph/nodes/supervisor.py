@@ -17,6 +17,7 @@ class RouterDecision(BaseModel):
         "portfolio",
         "goal_tracker",
         "sentiment",
+        "out_of_scope",
     ]] = Field(
         description=(
             "One OR MORE tool nodes to invoke. "
@@ -79,6 +80,10 @@ SUPERVISOR_PROMPT = (
     "\n"
     "goal_tracker   -> user checks if their EXISTING investment is on track\n"
     "                  e.g. 'I invest 5000/month, will I reach 50L in 10 years?'\n"
+    "\n"
+    "out_of_scope   -> user asks something COMPLETELY UNRELATED to finance, stocks, investments, or mutual funds.\n"
+    "                  e.g. 'how to make a cake', 'what is the weather', 'write python code'\n"
+    "                  NOTE: General greetings like 'hi' or 'hello' should map to 'financial_advisor' or 'qa_search', NOT 'out_of_scope'.\n"
     "\n"
     "MULTI-TOOL EXAMPLES — when the query has multiple parts, return ALL relevant tasks:\n"
     "  Query: 'Tell me about Parag Parikh Flexi Cap and create a SIP plan for 1 crore'\n"

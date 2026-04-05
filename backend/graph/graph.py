@@ -13,6 +13,7 @@ from graph.nodes.financial_advisor import financial_advisor_node
 from graph.nodes.sentiment_agent import sentiment_node
 from graph.nodes.portfolio import portfolio_node
 from graph.nodes.goal_tracker import goal_tracker_node
+from graph.nodes.out_of_scope import out_of_scope_node
 
 
 NODE_MAP = {
@@ -25,6 +26,7 @@ NODE_MAP = {
     "sentiment":         sentiment_node,
     "portfolio":         portfolio_node,
     "goal_tracker":      goal_tracker_node,
+    "out_of_scope":      out_of_scope_node,
 }
 
 

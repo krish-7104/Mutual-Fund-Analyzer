@@ -44,6 +44,7 @@ SECTION_LABELS = {
     "portfolio":         "Portfolio Snapshot",
     "goal_tracker":      "Goal Tracker",
     "qa_search":         "Answer",
+    "out_of_scope":      "Out of Scope",
 }
 
 
