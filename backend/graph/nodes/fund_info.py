@@ -1,5 +1,6 @@
 import requests
 import pandas as pd
+import json
 from langchain_core.tools import tool
 from langchain_openai import ChatOpenAI
 from graph.state import AgentState
@@ -55,31 +56,70 @@ def fetch_nav(fund_name: str, retries: int = 0) -> dict:
 
 
 def fund_info_node(state: AgentState) -> dict:
-    fund = state["fund_names"][0]
-    data = fetch_nav(fund)
-    print(data)
+    funds = state.get("fund_names", [])
+    if not funds:
+        return {
+            "tool_result": "No specific fund names provided. Could not fetch fund info.",
+            "tool_results": {"fund_info": "No specific fund names provided. Could not fetch fund info."}
+        }
+
+    all_results = []
     
-    if "error" in data:
-        msg = data["error"]
-        return {"tool_result": msg, "tool_results": {"fund_info": msg}}
+    prev_results = state.get("tool_results", {})
+    context_str = ""
+    if state.get("has_sequential") and prev_results:
+        # Don't include ourselves in the previous context
+        filtered_results = {k: v for k, v in prev_results.items() if k != "fund_info"}
+        if filtered_results:
+            context_str = f"Context from previous tools:\n{filtered_results}\n\n"
+
+    extracted_data = []
+    for fund in funds:
+        data = fetch_nav(fund)
+        print(f"Data for {fund}:", data)
         
-    gain_1y = round(
-        ((data["latest_nav"] - data["nav_1y_ago"]) / data["nav_1y_ago"]) * 100, 2
-    )
-    gain_3y = round(
-        ((data["latest_nav"] - data["nav_3y_ago"]) / data["nav_3y_ago"]) * 100, 2
-    )
+        if "error" in data:
+            extracted_data.append({"fund": fund, "error": data['error']})
+            continue
+            
+        gain_1y = round(
+            ((data["latest_nav"] - data["nav_1y_ago"]) / data["nav_1y_ago"]) * 100, 2
+        )
+        gain_3y = round(
+            ((data["latest_nav"] - data["nav_3y_ago"]) / data["nav_3y_ago"]) * 100, 2
+        )
+        extracted_data.append({
+            "name": data['name'],
+            "house": data['fund_house'],
+            "category": data['category'],
+            "latest_nav": data['latest_nav'],
+            "1_year_gain": f"{gain_1y}%",
+            "3_year_gain": f"{gain_3y}%"
+        })
+
+    data_dump = json.dumps(extracted_data, indent=2)
+    query = state["messages"][-1].content
+
     PROMPT = f"""
-        Fund: {data['name']}
-        House: {data['fund_house']} | Category: {data['category']}
-        Latest NAV: ₹{data['latest_nav']}
-        1-year gain: {gain_1y}%
-        3-year gain: {gain_3y}%
-        Give a plain-English summary of this fund. Cover what kind of fund it is,
-        how it has performed, and who it might suit. Keep it conversational.
+        {context_str}
+        
+        You are a mutual fund data presenter.
+        The user specifically asked: "{query}"
+        
+        Here is the real, fetched data for the underlying funds:
+        {data_dump}
+
+        Your job is to answer the user's EXACT query using ONLY this data. 
+        - If the user ONLY asked for NAV data, output a clean, concise list or markdown table of just the NAVs.
+        - If the user asked for a summary, give a brief plain-English summary.
+        - DO NOT generate a huge multi-paragraph summary for every fund unless specifically asked.
+        - Adapt your presentation format (table, bullet points, or short paragraph) to match what the user actually wants.
+        - Keep it readable and directly to the point.
     """
     response = llm.invoke(PROMPT)
+    final_result = response.content
+
     return {
-        "tool_result":  response.content,
-        "tool_results": {"fund_info": response.content},
+        "tool_result":  final_result,
+        "tool_results": {"fund_info": final_result},
     }

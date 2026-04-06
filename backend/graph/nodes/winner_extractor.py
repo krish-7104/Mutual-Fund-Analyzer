@@ -1,29 +1,43 @@
 from langchain_openai import ChatOpenAI
 from langchain_core.messages import HumanMessage
+import json
 
 llm = ChatOpenAI(model="gpt-4o", temperature=0)
 
 def extract_winner_node(state: dict) -> dict:
-    """
-    Reads fund_compare output and extracts the recommended fund name.
-    Only runs when next step has use_winner_from_previous=True.
-    """
-    compare_result = state.get("tool_results", {}).get("fund_compare", "")
-    if not compare_result:
+    tool_results = state.get("tool_results", {})
+    if not tool_results:
         return {}
+    
+    last_content = list(tool_results.values())[0]
 
     prompt = f"""
-    From this fund comparison result, extract ONLY the name of the recommended/better fund.
-    Return JUST the fund name, nothing else.
+    From this text, extract ALL mutual fund names mentioned as recommendations or winners.
+    If it's comparing and declares one winner, extract that one.
+    If it lists top 5 funds, extract all 5.
+    Return ONLY a JSON array of strings (e.g. ["Fund A", "Fund B"]). Do NOT return markdown or backticks.
     
-    Comparison result:
-    {compare_result}
+    Text:
+    {last_content}
     """
     response = llm.invoke([HumanMessage(content=prompt)])
-    winner = response.content.strip()
-    print(f"[winner_extractor] winner fund: {winner}")
+    content = response.content.strip()
+    if content.startswith("```json"):
+        content = content[7:-3]
+    elif content.startswith("```"):
+        content = content[3:-3]
+        
+    try:
+        funds = json.loads(content)
+        if not isinstance(funds, list):
+            funds = [content]
+    except:
+        funds = [content]
+        
+    winner = funds[0] if funds else ""
+    print(f"[winner_extractor] extracted funds: {funds}")
     
     return {
-        "fund_names": [winner],   # Override so sip_calculator uses winner
+        "fund_names": funds,   # Override so next node uses these funds
         "winner_fund": winner,
     }

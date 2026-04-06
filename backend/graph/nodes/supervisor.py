@@ -73,7 +73,7 @@ SUPERVISOR_PROMPT = (
     "You MUST return multiple tasks when the user asks for more than one thing.\n"
     "\n"
     "TOOL DESCRIPTIONS\n"
-    "fund_info      -> user asks about ONE specific fund\n"
+    "fund_info      -> user asks about fund(s), information like nav, 3year gain or 5 year gain if user has given fund names\n"
     "                  e.g. 'tell me about Mirae Asset', 'what is Axis Bluechip?'\n"
     "\n"
     "fund_compare   -> user wants to COMPARE two or more funds\n"
@@ -126,6 +126,12 @@ SUPERVISOR_PROMPT = (
 
     "SEQUENTIAL / DEPENDENT TASKS\n"
     "When a later step NEEDS the result of an earlier step, mark it with depends_on_previous=True.\n"
+    "\n"
+    "  Query: 'Give me top 5 best flexi cap fund with its nav data'\n"
+    "  -> task_chain: [\n"
+    "       {tool: financial_advisor, depends_on_previous: false, use_winner_from_previous: false},\n"
+    "       {tool: fund_info,         depends_on_previous: true,  use_winner_from_previous: true}\n"
+    "     ]\n"
     "\n"
     "  Query: 'Compare X and Y, then use the BEST fund to make a SIP for 10L'\n"
     "  -> task_chain: [\n"
@@ -186,7 +192,7 @@ def supervisor_node(state: dict) -> dict:
         "portfolio":    decision.portfolio,
         "next_agent":   primary,
         "next_agents":  tasks,
-        "tool_result":  "", # Clear previous turn's synthesized answer
+        "tool_result":  "",
         "task_chain":     task_chain,
         "has_sequential": has_sequential,
         "error":        None,

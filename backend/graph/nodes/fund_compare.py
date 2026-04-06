@@ -41,13 +41,22 @@ def compare_fund_node(state: AgentState) -> dict:
     for d in fund_data:
         fund_details += f"{d['name']} ({d['fund_house']})\nCategory: {d['category']} | NAV: ₹{d.get('latest_nav', 'N/A')}\n1Y return: {gain(d, '1y')}% | 3Y return: {gain(d, '3y')}%\n\n"
 
+    prev_results = state.get("tool_results", {})
+    context_str = ""
+    if state.get("has_sequential") and prev_results:
+        filtered_results = {k: v for k, v in prev_results.items() if k != "fund_compare"}
+        if filtered_results:
+            context_str = f"Context from previous tools:\n{filtered_results}\n\n"
+
     PROMPT = f"""
+    {context_str}
     Compare the following mutual funds and give a clear verdict:
 
     {fund_details}
 
     Provide a comparative analysis. Which one is better for a beginner? Which for a long-term investor?
     Highlight the pros and cons based on available metrics.
+    If the context mentions specific priorities (e.g. from a financial advisor), address them!
     End with a one-line overall verdict.
     """
     response = llm.invoke(PROMPT)

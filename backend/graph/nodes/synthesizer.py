@@ -90,13 +90,15 @@ def synthesizer_node(state: AgentState) -> dict:
     active_tools: list = state.get("next_agents") or []
     winner_fund: str = state.get("winner_fund")
 
-    tool_results = {k: v for k, v in all_results.items() if k in active_tools}
+    print(f"[synthesizer] all_results keys: {list(all_results.keys())}")
+    
+    # We use all_results directly since the state is scoped to a single run
+    tool_results = all_results
 
     if not tool_results:
         fallback = "<p>I could not process that request. Please try again.</p>"
         return {
             "tool_result": fallback,
-            "messages": [AIMessage(content=fallback)],
         }
 
     query = state["messages"][-1].content
@@ -151,5 +153,4 @@ def synthesizer_node(state: AgentState) -> dict:
 
     return {
         "tool_result": cleaned,
-        "messages": [AIMessage(content=cleaned)],
     }

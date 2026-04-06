@@ -15,6 +15,7 @@ from graph.nodes.sentiment_agent import sentiment_node
 from graph.nodes.portfolio import portfolio_node
 from graph.nodes.goal_tracker import goal_tracker_node
 from graph.nodes.out_of_scope import out_of_scope_node
+from graph.nodes.qa_verifier import qa_verifier_node
 
 NODE_MAP = {
     "fund_info":         fund_info_node,
@@ -46,33 +47,33 @@ def sequential_start_router(state: AgentState):
     return first  # simple string — single edge
 
 
-def after_compare_router(state: AgentState):
-    """
-    After fund_compare runs:
-    - If next step needs the winner → extract_winner
-    - Otherwise → synthesizer (no further dependent steps)
-    """
-    task_chain = state.get("task_chain") or []
-    # Find if any remaining step needs the winner
-    needs_winner = any(
-        getattr(s, "use_winner_from_previous", False)
-        for s in task_chain[1:]  # skip the first (fund_compare already ran)
-    )
-    target = "extract_winner" if needs_winner else "synthesizer"
-    print(f"[after_compare_router] → {target}")
-    return target
+def after_tool_router(state: AgentState):
+    if not state.get("has_sequential"):
+        return "synthesizer"
 
-
-def after_winner_router(state: AgentState):
-    """After winner is extracted, route to the next dependent tool."""
     task_chain = state.get("task_chain") or []
-    # Find the first step that depends on previous (it's the one waiting)
+    tool_results = state.get("tool_results", {})
+    
     for step in task_chain:
         tool = getattr(step, "tool", None)
-        if getattr(step, "depends_on_previous", False) and tool:
-            print(f"[after_winner_router] → {tool}")
+        if tool and tool not in tool_results:
+            if getattr(step, "depends_on_previous", False) or getattr(step, "use_winner_from_previous", False):
+                return "extract_winner"
             return tool
-    # Fallback: nothing left, go to synthesizer
+
+    return "synthesizer"
+
+
+def after_extractor_router(state: AgentState):
+    """After extracting funds, go to the next tool."""
+    task_chain = state.get("task_chain") or []
+    tool_results = state.get("tool_results", {})
+    
+    for step in task_chain:
+        tool = getattr(step, "tool", None)
+        if tool and tool not in tool_results:
+            return tool
+            
     return "synthesizer"
 
 
@@ -91,44 +92,40 @@ def build_graph():
     g.add_node("supervisor",      supervisor_node)
     g.add_node("synthesizer",     synthesizer_node)
     g.add_node("extract_winner",  extract_winner_node)
+    g.add_node("qa_verifier",     qa_verifier_node)
 
-    # All tool nodes
     for name, fn in NODE_MAP.items():
         g.add_node(name, fn)
 
-    # Entry point
     g.set_entry_point("supervisor")
 
-    # supervisor decides to either fan out or start sequential
     g.add_conditional_edges(
         "supervisor",
         supervisor_exit_router,
     )
 
-    # Sequential path: run first agent (fund_compare)
-    # fund_compare → after_compare_router → extract_winner OR synthesizer
+    for name in NODE_MAP:
+        g.add_conditional_edges(
+            name,
+            after_tool_router,
+            {
+                "extract_winner": "extract_winner",
+                "synthesizer":    "synthesizer",
+                **{tool: tool for tool in NODE_MAP}
+            }
+        )
+
     g.add_conditional_edges(
-        "fund_compare",
-        after_compare_router,
+        "extract_winner",
+        after_extractor_router,
         {
-            "extract_winner": "extract_winner",
-            "synthesizer":    "synthesizer",
+            "synthesizer": "synthesizer",
+            **{tool: tool for tool in NODE_MAP}
         }
     )
 
-    # extract_winner → next dependent tool (e.g. sip_calculator)
-    g.add_conditional_edges(
-        "extract_winner",
-        after_winner_router,
-        {tool: tool for tool in NODE_MAP},  # map every tool name to itself
-    )
-
-    # All parallel tool nodes → synthesizer
-    for name in NODE_MAP:
-        if name != "fund_compare":  # fund_compare has its own conditional edge
-            g.add_edge(name, "synthesizer")
-
-    g.add_edge("synthesizer", END)
+    g.add_edge("synthesizer", "qa_verifier")
+    g.add_edge("qa_verifier", END)
 
     return g.compile()
 

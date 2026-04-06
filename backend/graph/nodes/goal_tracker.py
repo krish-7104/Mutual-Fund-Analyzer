@@ -37,7 +37,16 @@ def goal_tracker_node(state: AgentState) -> dict:
         else f"You are short by ₹{abs(shortfall):,}."
     )
 
+    prev_results = state.get("tool_results", {})
+    context_str = ""
+    if state.get("has_sequential") and prev_results:
+        filtered_results = {k: v for k, v in prev_results.items() if k != "goal_tracker"}
+        if filtered_results:
+            context_str = f"\n\nContext from previous tools:\n{filtered_results}\nPlease incorporate this context (like fund details from a previous search) into your calculations if relevant!"
+
     prompt = f"""
+    {context_str}
+    
     The user invests ₹{p['monthly_sip']:,}/month and wants to reach ₹{p['target']:,} in {p['years']} years.
     At {p['rate']}% assumed annual return, their projected corpus is ₹{projected:,}.
     Status: {status}. {gap_text}
