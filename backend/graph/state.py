@@ -1,6 +1,5 @@
 from typing import TypedDict, Annotated, List, Optional, Dict
 from langchain_core.messages import BaseMessage
-import operator
 
 
 def _merge_tool_results(a: Dict, b: Dict) -> Dict:
@@ -23,5 +22,8 @@ class AgentState(TypedDict):
     tool_result:  Annotated[Optional[str], _last_wins]         # synthesizer output — annotated to allow parallel writes
     tool_results: Annotated[Dict, _merge_tool_results]         # multi-tool: {tool_name: result}, merged across branches
     next_agent:   str                                          # legacy single-tool compat
-    next_agents:  List[str]                                    # multi-tool: list of tools to dispatch
-    error:        Optional[str]
+    next_agents:    List[str]                                    # multi-tool: list of tools to dispatch
+    task_chain:     List[dict]                                   # Sequential/complex dispatching states
+    has_sequential: bool
+    winner_fund:    Optional[str]
+    error:          Optional[str]
