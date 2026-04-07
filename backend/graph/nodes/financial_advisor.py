@@ -23,6 +23,7 @@ Always include a clear disclaimer at the end: "This is general financial educati
 def financial_advisor_node(state: AgentState) -> dict:
     print("financial_advisor_node")
     query = state["messages"][-1].content
+    active_tools = state.get("next_agents") or []
     
     prev_results = state.get("tool_results", {})
     context_str = ""
@@ -31,7 +32,14 @@ def financial_advisor_node(state: AgentState) -> dict:
         if filtered_results:
             context_str = f"\n\nContext from previous tools:\n{filtered_results}\nPlease incorporate this context into your advice."
 
-    human_message = query + context_str
+    scope_guard = ""
+    if "sip_calculator" in active_tools:
+        scope_guard = (
+            "\n\nImportant scope rule: Do NOT create any SIP plan, SIP math, or monthly split. "
+            "Only provide fund recommendations and why they are suitable."
+        )
+
+    human_message = query + context_str + scope_guard
 
     response = llm.invoke([
         ("system", ADVISOR_PROMPT),

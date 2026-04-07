@@ -126,7 +126,9 @@ def synthesizer_node(state: AgentState) -> dict:
             f"{winner_context}\n"
             "Format each section under its own <h2> heading. "
             "Respect each section's word limit. "
-            "Do NOT reason about or recompute values — only format what is given.\n\n"
+            "Do NOT reason about or recompute values — only format what is given.\n"
+            "If a SIP section exists, keep SIP calculations/allocation ONLY in the SIP section. "
+            "In other sections, remove SIP plans and SIP allocation lines.\n\n"
             f"{raw}\n\n"
             f"{disclaimers}"
         )

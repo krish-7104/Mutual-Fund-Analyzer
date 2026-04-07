@@ -12,9 +12,12 @@ def extract_winner_node(state: dict) -> dict:
     last_content = list(tool_results.values())[0]
 
     prompt = f"""
-    From this text, extract ALL mutual fund names mentioned as recommendations or winners.
-    If it's comparing and declares one winner, extract that one.
-    If it lists top 5 funds, extract all 5.
+    From this text, extract the FINAL recommended winner funds only.
+    Prefer explicit winners/recommended picks over broad top lists.
+    If there is one winner, return one fund.
+    If there are category-wise winners (e.g., one flexi-cap and one small-cap), return those winners only.
+    If no explicit winners exist, then return recommendation candidates.
+    Return at most 2 funds.
     Return ONLY a JSON array of strings (e.g. ["Fund A", "Fund B"]). Do NOT return markdown or backticks.
     
     Text:

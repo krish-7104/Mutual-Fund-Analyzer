@@ -57,6 +57,7 @@ def fetch_nav(fund_name: str, retries: int = 0) -> dict:
 
 def fund_info_node(state: AgentState) -> dict:
     funds = state.get("fund_names", [])
+    active_tools = state.get("next_agents") or []
     if not funds:
         return {
             "tool_result": "No specific fund names provided. Could not fetch fund info.",
@@ -99,6 +100,9 @@ def fund_info_node(state: AgentState) -> dict:
 
     data_dump = json.dumps(extracted_data, indent=2)
     query = state["messages"][-1].content
+    sip_scope_guard = ""
+    if "sip_calculator" in active_tools:
+        sip_scope_guard = "- If sip_calculator is also active in this run, DO NOT provide SIP plans, split suggestions, or investment allocation advice.\n"
 
     PROMPT = f"""
         {context_str}
@@ -115,6 +119,7 @@ def fund_info_node(state: AgentState) -> dict:
         - DO NOT generate a huge multi-paragraph summary for every fund unless specifically asked.
         - Adapt your presentation format (table, bullet points, or short paragraph) to match what the user actually wants.
         - Keep it readable and directly to the point.
+        {sip_scope_guard}
     """
     response = llm.invoke(PROMPT)
     final_result = response.content
