@@ -143,16 +143,51 @@ def _extract_inputs_with_rules(query: str):
     }
 
 
+def _wants_four_category_plan(query: str) -> bool:
+    q = query.lower()
+    return (
+        ("flexi" in q and "small" in q and "mid" in q and "index" in q)
+        or ("one flexi cap" in q and "one small cap" in q and "one mid cap" in q and "one index" in q)
+    )
+
+
+def _extract_suggested_funds(text: str) -> list:
+    funds = []
+    patterns = [
+        r"Fund Suggestion:\s*([^\n\r]+)",
+        r"-\s*([A-Za-z][A-Za-z0-9&().,\-\/ ]+(?:Fund|Index Fund))",
+    ]
+    for pattern in patterns:
+        for match in re.findall(pattern, text, flags=re.IGNORECASE):
+            name = " ".join(str(match).split()).strip(" -:")
+            if name and name not in funds:
+                funds.append(name)
+    return funds
+
+
+def _merge_funds(primary: list, secondary: list) -> list:
+    merged = []
+    for f in (primary or []) + (secondary or []):
+        name = " ".join(str(f).split()).strip()
+        if name and name not in merged:
+            merged.append(name)
+    return merged
+
+
 def sip_calculator_node(state: AgentState) -> dict:
     print("sip_calculator_node")
     query = state["messages"][-1].content
     winner_fund = state.get("winner_fund")
     fund_names = state.get("fund_names") or []
     selected_funds = []
+    prev_results = state.get("tool_results", {})
     if fund_names:
         selected_funds = fund_names
     elif winner_fund:
         selected_funds = [winner_fund]
+    if _wants_four_category_plan(query):
+        suggestions = _extract_suggested_funds(str(prev_results.get("financial_advisor", "")))
+        selected_funds = _merge_funds(selected_funds, suggestions)
 
     funds_context = (
         f"This SIP plan should use these selected fund(s): {selected_funds}\n\n"
@@ -160,7 +195,6 @@ def sip_calculator_node(state: AgentState) -> dict:
     )
 
     # ── 2. Build context string from previous tool results ───────────────────
-    prev_results = state.get("tool_results", {})
     context_str = ""
     if prev_results:
         context_str = (

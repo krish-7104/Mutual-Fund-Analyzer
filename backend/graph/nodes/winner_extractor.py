@@ -17,7 +17,7 @@ def extract_winner_node(state: dict) -> dict:
     If there is one winner, return one fund.
     If there are category-wise winners (e.g., one flexi-cap and one small-cap), return those winners only.
     If no explicit winners exist, then return recommendation candidates.
-    Return at most 2 funds.
+    Return all relevant recommended funds mentioned in the text.
     Return ONLY a JSON array of strings (e.g. ["Fund A", "Fund B"]). Do NOT return markdown or backticks.
     
     Text:
@@ -36,6 +36,7 @@ def extract_winner_node(state: dict) -> dict:
             funds = [content]
     except:
         funds = [content]
+    funds = [str(f).strip() for f in funds if str(f).strip()]
         
     winner = funds[0] if funds else ""
     print(f"[winner_extractor] extracted funds: {funds}")
