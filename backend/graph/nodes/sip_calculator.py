@@ -30,7 +30,7 @@ def sip_calculator_node(state: AgentState) -> dict:
     print("sip_calculator_node")
     query = state["messages"][-1].content
     winner_fund = state.get("winner_fund")
-    fund_names  = state.get("fund_names") or []
+    fund_names = state.get("fund_names") or []
     active_fund = winner_fund or (fund_names[0] if fund_names else None)
 
     fund_context = (
@@ -51,11 +51,11 @@ def sip_calculator_node(state: AgentState) -> dict:
 
     EXTRACT_PROMPT = (
         "From this user message and context, extract these three numbers:\n"
-        "  - target: the corpus / amount they want to reach (in rupees as a plain integer)\n"
+        "  - target: the corpus / amount they want to reach (in rupees as a plain integer) if not mention then assume 1,00,00,000,\n"
         "  - years: number of years for investment (integer; use 15 if not mentioned)\n"
         "  - rate: assumed annual return % (use 12 if not mentioned by user or previous tools)\n\n"
         f"{context_str}"
-        f"{fund_context}"  
+        f"{fund_context}"
         "Rules:\n"
         "  - '1CR' or '1 crore' = 10000000\n"
         "  - '50L' or '50 lakh' = 5000000\n"
