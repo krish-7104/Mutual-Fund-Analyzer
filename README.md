@@ -2,9 +2,12 @@
 
 Mutual Fund Analyzer is an AI-powered, stateless, single-turn financial assistant built specifically for the Indian market. It leverages multi-agent architecture and parallel processing to answer complex financial queries, compare funds, analyze mutual fund portfolios, calculate SIP plans, and understand market sentiments in real-time.
 
+<img width="1470" height="832" alt="Screenshot 2026-04-07 at 7 20 28 PM" src="https://github.com/user-attachments/assets/c93ea46b-4570-4d40-9ebf-2bfd3089fd16" />
+
 ---
 
-## 🎯 The Problem & Our Solution Approach
+## 🎯 The Problem & Solution Approach
+
 
 **The Problem:** Traditional mutual fund applications behave like static databases—offering facts but no actionable insights. On the other hand, traditional conversational LLMs hallucinate stock data and struggle to analyze complex, multi-part financial goals consistently.
 
