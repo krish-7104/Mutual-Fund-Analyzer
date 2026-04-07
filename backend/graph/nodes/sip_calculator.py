@@ -150,7 +150,7 @@ def sip_calculator_node(state: AgentState) -> dict:
     fund_names = state.get("fund_names") or []
     selected_funds = []
     if fund_names:
-        selected_funds = fund_names[:2]
+        selected_funds = fund_names
     elif winner_fund:
         selected_funds = [winner_fund]
 
