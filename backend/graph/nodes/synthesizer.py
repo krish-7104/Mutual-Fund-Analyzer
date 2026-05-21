@@ -8,71 +8,84 @@ load_dotenv()
 llm = ChatOpenAI(model="gpt-4o", temperature=0.1)
 
 SECTION_WORD_LIMITS = {
-    "fund_compare":      500,
-    "fund_info":         350,
-    "sip_calculator":    300,
-    "portfolio":         400,
-    "financial_advisor": 400,
-    "news":              300,
-    "sentiment":         250,
-    "goal_tracker":      300,
-    "qa_search":         250,
-    "out_of_scope":      100,
+    "fund_compare":        500,
+    "fund_info":           350,
+    "fund_screener":       400,
+    "sip_calculator":      300,
+    "lumpsum_calculator":  300,
+    "portfolio":           400,
+    "financial_advisor":   400,
+    "news":                300,
+    "sentiment":           250,
+    "goal_tracker":        300,
+    "qa_search":           250,
+    "stock_info":          350,
+    "tax_calculator":      350,
+    "out_of_scope":        100,
 }
 DEFAULT_WORD_LIMIT = 300
 
 SECTION_LABELS = {
-    "fund_info":         "Fund Overview",
-    "sip_calculator":    "SIP Plan",
-    "fund_compare":      "Fund Comparison",
-    "news":              "Latest News",
-    "sentiment":         "Market Sentiment",
-    "financial_advisor": "Financial Advice",
-    "portfolio":         "Portfolio Snapshot",
-    "goal_tracker":      "Goal Tracker",
-    "qa_search":         "Answer",
-    "out_of_scope":      "Out of Scope",
+    "fund_info":           "Fund Overview",
+    "fund_compare":        "Fund Comparison",
+    "fund_screener":       "Top Fund Picks",
+    "sip_calculator":      "SIP Plan",
+    "lumpsum_calculator":  "Lump Sum Plan",
+    "portfolio":           "Portfolio Snapshot",
+    "financial_advisor":   "Financial Advice",
+    "news":                "Latest News",
+    "sentiment":           "Market Sentiment",
+    "goal_tracker":        "Goal Tracker",
+    "qa_search":           "Answer",
+    "stock_info":          "Stock Overview",
+    "tax_calculator":      "Tax Calculation",
+    "out_of_scope":        "Out of Scope",
 }
 
 DISCLAIMER_MAP = {
-    "fund_info":         "<p><em>Past performance is not indicative of future returns.</em></p>",
-    "fund_compare":      "<p><em>Past performance is not indicative of future returns.</em></p>",
-    "sip_calculator":    "<p><em>Projections are estimates based on assumed returns.</em></p>",
-    "goal_tracker":      "<p><em>Projections are estimates based on assumed returns.</em></p>",
-    "financial_advisor": "<p><em>This is general information, not personalised advice.</em></p>",
-    "qa_search":         "<p><em>This is general information, not personalised advice.</em></p>",
-    "news":              "<p><em>This is general information, not personalised advice.</em></p>",
+    "fund_info":           "<p><em>Past performance is not indicative of future returns.</em></p>",
+    "fund_compare":        "<p><em>Past performance is not indicative of future returns.</em></p>",
+    "fund_screener":       "<p><em>Fund suggestions are based on web data. Verify on AMFI before investing.</em></p>",
+    "sip_calculator":      "<p><em>Projections are estimates based on assumed returns and may vary.</em></p>",
+    "lumpsum_calculator":  "<p><em>Projections are estimates based on assumed returns and may vary.</em></p>",
+    "goal_tracker":        "<p><em>Projections are estimates based on assumed returns and may vary.</em></p>",
+    "financial_advisor":   "<p><em>This is general information, not personalised investment advice.</em></p>",
+    "qa_search":           "<p><em>This is general information, not personalised investment advice.</em></p>",
+    "news":                "<p><em>News summaries are for informational purposes only, not investment advice.</em></p>",
+    "stock_info":          "<p><em>Past performance is not indicative of future returns. Stock investments carry market risk.</em></p>",
+    "tax_calculator":      "<p><em>Tax figures are estimates. Consult a CA/tax advisor for accurate tax filing.</em></p>",
 }
 
 SYNTH_PROMPT = """
-You are a response formatter for a mutual fund AI assistant.
+You are a response formatter for a mutual fund & stock market AI assistant.
 Your ONLY job is to convert raw tool output into clean, structured HTML.
 
 Rules:
 - Return ONLY valid HTML — no markdown, no code fences, no explanation
 - Use semantic HTML:
     <h2> for section headings (only when multiple sections exist)
+    <h3> for sub-headings within a section
     <p> for paragraphs
-    <ul><li> for lists only when genuinely list-like (max 5 items)
-    <table> for comparisons with rows and columns
-- Format numbers: ₹1,00,000 not 100000; 12% not 0.12
+    <ul><li> for lists (max 6 items)
+    <table> for comparisons, fund lists, or structured data with rows/columns
+- Format numbers using Indian system: ₹1,00,000 not 100000; 12% not 0.12; "1.5 Crores" not 15000000
 - Do NOT add inline styles
 - Do NOT invent data not present in the raw input
-- Word limit per section is provided in the instruction — respect it
+- Respect the word limit per section
+- For tax calculations: use <table> to show the step-by-step breakdown
+- For stock data: use <table> to show price, returns, valuation metrics
+- For fund screener results: use a clean <table> or structured <ul> with fund name and rationale
 """
 
 
 def clean_html_output(text: str) -> str:
-    """Strip markdown code fences if model wraps output."""
     text = text.strip()
-    # Remove ```html ... ``` or ``` ... ```
     text = re.sub(r"^```(?:html)?\s*", "", text, flags=re.IGNORECASE)
     text = re.sub(r"\s*```$", "", text)
     return text.strip()
 
 
 def build_disclaimers(active_tools: list) -> str:
-    """Deduplicated disclaimers for all active tools."""
     seen = set()
     disclaimers = []
     for tool in active_tools:
@@ -91,15 +104,12 @@ def synthesizer_node(state: AgentState) -> dict:
     winner_fund: str = state.get("winner_fund")
 
     print(f"[synthesizer] all_results keys: {list(all_results.keys())}")
-    
-    # We use all_results directly since the state is scoped to a single run
+
     tool_results = all_results
 
     if not tool_results:
         fallback = "<p>I could not process that request. Please try again.</p>"
-        return {
-            "tool_result": fallback,
-        }
+        return {"tool_result": fallback}
 
     query = state["messages"][-1].content
     disclaimers = build_disclaimers(active_tools)
@@ -109,15 +119,13 @@ def synthesizer_node(state: AgentState) -> dict:
         for tool_name, result in tool_results.items():
             label = SECTION_LABELS.get(tool_name, tool_name.replace("_", " ").title())
             word_limit = SECTION_WORD_LIMITS.get(tool_name, DEFAULT_WORD_LIMIT)
-            parts.append(
-                f"[SECTION: {label} | word_limit: {word_limit}]\n{result}"
-            )
+            parts.append(f"[SECTION: {label} | word_limit: {word_limit}]\n{result}")
 
         raw = "\n\n---\n\n".join(parts)
 
         winner_context = (
-            f"\nNOTE: The recommended fund from the comparison is '{winner_fund}'. "
-            f"The SIP section already uses this fund — present it as such.\n"
+            f"\nNOTE: The recommended fund from the previous step is '{winner_fund}'. "
+            f"Present any SIP/lump sum section as being for this fund.\n"
             if winner_fund else ""
         )
 
@@ -127,12 +135,10 @@ def synthesizer_node(state: AgentState) -> dict:
             "Format each section under its own <h2> heading. "
             "Respect each section's word limit. "
             "Do NOT reason about or recompute values — only format what is given.\n"
-            "If a SIP section exists, keep SIP calculations/allocation ONLY in the SIP section. "
-            "In other sections, remove SIP plans and SIP allocation lines.\n\n"
+            "If a SIP or lump sum section exists, keep investment plans ONLY in that section.\n\n"
             f"{raw}\n\n"
             f"{disclaimers}"
         )
-
     else:
         tool_name = next(iter(tool_results))
         raw = next(iter(tool_results.values()))
@@ -153,6 +159,4 @@ def synthesizer_node(state: AgentState) -> dict:
 
     cleaned = clean_html_output(response.content)
 
-    return {
-        "tool_result": cleaned,
-    }
+    return {"tool_result": cleaned}

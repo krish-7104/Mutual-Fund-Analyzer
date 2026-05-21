@@ -6,31 +6,39 @@ from graph.nodes.synthesizer import synthesizer_node
 from graph.nodes.winner_extractor import extract_winner_node
 from graph.nodes.fund_info import fund_info_node
 from graph.nodes.fund_compare import compare_fund_node
+from graph.nodes.fund_screener import fund_screener_node
 from graph.nodes.sip_calculator import sip_calculator_node
+from graph.nodes.lumpsum_calculator import lumpsum_calculator_node
 from graph.nodes.qa_search import qa_search_node
 from graph.nodes.news_agent import news_node
 from graph.nodes.financial_advisor import financial_advisor_node
 from graph.nodes.sentiment_agent import sentiment_node
 from graph.nodes.portfolio import portfolio_node
 from graph.nodes.goal_tracker import goal_tracker_node
+from graph.nodes.stock_info import stock_info_node
+from graph.nodes.tax_calculator import tax_calculator_node
 from graph.nodes.out_of_scope import out_of_scope_node
 
 NODE_MAP = {
-    "fund_info":         fund_info_node,
-    "fund_compare":      compare_fund_node,
-    "sip_calculator":    sip_calculator_node,
-    "qa_search":         qa_search_node,
-    "news":              news_node,
-    "financial_advisor": financial_advisor_node,
-    "sentiment":         sentiment_node,
-    "portfolio":         portfolio_node,
-    "goal_tracker":      goal_tracker_node,
-    "out_of_scope":      out_of_scope_node,
+    "fund_info":           fund_info_node,
+    "fund_compare":        compare_fund_node,
+    "fund_screener":       fund_screener_node,
+    "sip_calculator":      sip_calculator_node,
+    "lumpsum_calculator":  lumpsum_calculator_node,
+    "qa_search":           qa_search_node,
+    "news":                news_node,
+    "financial_advisor":   financial_advisor_node,
+    "sentiment":           sentiment_node,
+    "portfolio":           portfolio_node,
+    "goal_tracker":        goal_tracker_node,
+    "stock_info":          stock_info_node,
+    "tax_calculator":      tax_calculator_node,
+    "out_of_scope":        out_of_scope_node,
 }
 
 ROUTE_TARGETS = {
     "extract_winner": "extract_winner",
-    "synthesizer": "synthesizer",
+    "synthesizer":    "synthesizer",
     **{tool: tool for tool in NODE_MAP},
 }
 
@@ -50,6 +58,7 @@ def _pending_tool(task_chain, tool_results):
         )
         return tool, needs_previous
     return None, False
+
 
 def fan_out_router(state: AgentState):
     agents = _planned_agents(state)
@@ -94,15 +103,15 @@ def supervisor_exit_router(state: AgentState):
         return sequential_start_router(state)
     return fan_out_router(state)
 
-# ── Graph builder ────────────────────────────────────────────────────────────
+
+# ── Graph builder ─────────────────────────────────────────────────────────────
 
 def build_graph():
     g = StateGraph(AgentState)
 
-    # Core nodes
-    g.add_node("supervisor",      supervisor_node)
-    g.add_node("synthesizer",     synthesizer_node)
-    g.add_node("extract_winner",  extract_winner_node)
+    g.add_node("supervisor",     supervisor_node)
+    g.add_node("synthesizer",    synthesizer_node)
+    g.add_node("extract_winner", extract_winner_node)
 
     for name, fn in NODE_MAP.items():
         g.add_node(name, fn)
@@ -130,5 +139,6 @@ def build_graph():
     g.add_edge("synthesizer", END)
 
     return g.compile()
+
 
 graph = build_graph()
