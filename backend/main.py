@@ -17,17 +17,12 @@ app.add_middleware(
 
 
 class ChatRequest(BaseModel):
-    message:   str
-    thread_id: str = "default"
+    message: str
 
 
 @app.post("/chat")
 async def chat(req: ChatRequest):
-    config = {"configurable": {"thread_id": req.thread_id}}
-    result = graph.invoke(
-        {"messages": [HumanMessage(content=req.message)]},
-        config=config
-    )
+    result = graph.invoke({"messages": [HumanMessage(content=req.message)]})
     return {"response": result["tool_result"]}
 
 
