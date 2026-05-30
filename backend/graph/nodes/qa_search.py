@@ -39,13 +39,14 @@ def qa_search_node(state: AgentState) -> dict:
                 "Incorporate this context into your answer where relevant.\n\n"
             )
 
+    web_context_str = f"Latest information from web:\n{context}\n\n" if context else ""
+
     PROMPT = f"""
     You are a friendly and knowledgeable financial educator for Indian investors.
     You cover mutual funds, stocks, ETFs, bonds, tax, financial planning, and the Indian economy.
 
     {context_str}
-    {"Latest information from web:\n" + context + "\n\n" if context else ""}
-
+    {web_context_str}
     Question: {query}
 
     Answer in plain, simple language suitable for an Indian retail investor:
